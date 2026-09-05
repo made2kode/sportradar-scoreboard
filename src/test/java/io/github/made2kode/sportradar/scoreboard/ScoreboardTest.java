@@ -152,6 +152,18 @@ class ScoreboardTest {
     }
 
     @Test
+    void getsTheLatestStateOfOneActiveMatch() {
+        Scoreboard scoreboard = new Scoreboard();
+        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+        MatchSnapshot updated = scoreboard.updateScore(started.id(), 2, 1, started.version());
+
+        assertEquals(updated, scoreboard.getMatch(started.id()).orElseThrow());
+
+        scoreboard.finishMatch(updated.id(), updated.version());
+        assertTrue(scoreboard.getMatch(updated.id()).isEmpty());
+    }
+
+    @Test
     void rejectsInvalidInput() {
         Scoreboard scoreboard = new Scoreboard();
 

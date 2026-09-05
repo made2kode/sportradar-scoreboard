@@ -27,12 +27,21 @@ MatchSnapshot match = scoreboard.startMatch("Poland", "Germany");
 match = scoreboard.updateScore(match.id(), 2, 1, match.version());
 
 List<MatchSnapshot> summary = scoreboard.getSummary();
+Optional<MatchSnapshot> latest = scoreboard.getMatch(match.id());
 
 scoreboard.finishMatch(match.id(), match.version());
 ```
 
 `getSummary()` orders active matches by total score descending. Matches tied on total score are
 ordered by start order descending, so the most recently started match comes first.
+
+## Additional operation: `getMatch`
+
+`getMatch(MatchId)` is the single operation added beyond the four required lifecycle and summary
+operations. It returns the latest immutable snapshot of a known active match, or `Optional.empty()`
+after that match has finished. A live-data consumer commonly needs to refresh one match before
+submitting an optimistic write; forcing it to fetch and scan the complete summary would make that
+workflow less direct. The operation is introduced in a dedicated git commit.
 
 ## Concurrency and optimistic locking
 

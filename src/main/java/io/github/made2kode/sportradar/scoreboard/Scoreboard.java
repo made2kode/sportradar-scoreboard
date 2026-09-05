@@ -3,6 +3,7 @@ package io.github.made2kode.sportradar.scoreboard;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Thread-safe facade for managing active football matches in memory. */
@@ -65,6 +66,11 @@ public final class Scoreboard {
                 .sorted(SUMMARY_ORDER)
                 .map(Match::snapshot)
                 .toList();
+    }
+
+    /** Returns the latest snapshot of one active match, if it is still in progress. */
+    public Optional<MatchSnapshot> getMatch(MatchId matchId) {
+        return repository.findById(matchId).map(Match::snapshot);
     }
 
     private static long next(AtomicLong sequence) {

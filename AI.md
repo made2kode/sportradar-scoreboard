@@ -34,6 +34,8 @@ The assistant proposed and the user retained these important choices:
 - ordering uses a monotonic sequence rather than wall-clock time;
 - public optimistic locking makes concurrent-write conflicts visible instead of silently retrying
   and hiding lost updates.
+- `getMatch(MatchId)` is the one additional operation because it lets clients cheaply refresh one
+  aggregate and obtain the version needed for a retry after an optimistic-lock conflict.
 
 ## Artifacts and references
 
