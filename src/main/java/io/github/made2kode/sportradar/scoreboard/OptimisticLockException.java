@@ -1,9 +1,9 @@
 package io.github.made2kode.sportradar.scoreboard;
 
-/** Raised when a write is based on a stale aggregate version. */
+/**
+ * Raised when a write is based on a stale aggregate version.
+ */
 public final class OptimisticLockException extends RuntimeException {
-
-    private static final long serialVersionUID = 1L;
 
     private final MatchId matchId;
     private final long expectedVersion;

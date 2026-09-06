@@ -8,13 +8,17 @@ import org.junit.jupiter.api.Test;
 class TeamNameTest {
 
     @Test
-    void stripsSurroundingWhitespace() {
+    void strips_surrounding_whitespace() {
         assertEquals("Poland", new TeamName("  Poland  ").value());
     }
 
     @Test
-    void rejectsNullAndBlankNames() {
+    void rejects_null_name() {
         assertThrows(NullPointerException.class, () -> new TeamName(null));
+    }
+
+    @Test
+    void rejects_blank_name() {
         assertThrows(IllegalArgumentException.class, () -> new TeamName(" \t "));
     }
 }

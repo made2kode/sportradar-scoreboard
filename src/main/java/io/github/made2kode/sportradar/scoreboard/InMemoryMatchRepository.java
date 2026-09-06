@@ -1,12 +1,13 @@
 package io.github.made2kode.sportradar.scoreboard;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.UnaryOperator;
 
 final class InMemoryMatchRepository implements MatchRepository {
 
@@ -21,17 +22,13 @@ final class InMemoryMatchRepository implements MatchRepository {
     }
 
     @Override
-    public Match update(MatchId matchId, long expectedVersion, UnaryOperator<Match> transition) {
-        Objects.requireNonNull(matchId, "matchId");
-        Objects.requireNonNull(transition, "transition");
-        return matches.compute(matchId, (id, current) -> {
+    public Match save(Match updatedMatch, long expectedVersion) {
+        Objects.requireNonNull(updatedMatch, "updatedMatch");
+        return matches.compute(updatedMatch.id(), (id, current) -> {
             Match existing = requireCurrent(id, current);
             requireVersion(existing, expectedVersion);
-            Match updated = Objects.requireNonNull(transition.apply(existing), "transition result");
-            if (!updated.id().equals(id)) {
-                throw new IllegalStateException("An update cannot change match identity");
-            }
-            return updated;
+            requireNextVersion(existing, updatedMatch);
+            return updatedMatch;
         });
     }
 
@@ -55,7 +52,7 @@ final class InMemoryMatchRepository implements MatchRepository {
         return List.copyOf(matches.values());
     }
 
-    private static Match requireCurrent(MatchId matchId, Match current) {
+    private static Match requireCurrent(MatchId matchId, @Nullable Match current) {
         if (current == null) {
             throw new MatchNotFoundException(matchId);
         }
@@ -68,6 +65,17 @@ final class InMemoryMatchRepository implements MatchRepository {
         }
         if (match.version() != expectedVersion) {
             throw new OptimisticLockException(match.id(), expectedVersion, match.version());
+        }
+    }
+
+    private static void requireNextVersion(Match existing, Match updated) {
+        long requiredVersion = Math.incrementExact(existing.version());
+
+        if (updated.version() != requiredVersion) {
+            throw new IllegalArgumentException(
+                    "Updated match version must be %d but was %d"
+                            .formatted(requiredVersion, updated.version())
+            );
         }
     }
 }

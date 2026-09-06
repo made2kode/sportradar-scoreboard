@@ -15,8 +15,7 @@ public final class Scoreboard {
             .thenComparing(Comparator.comparingLong(Match::startOrder).reversed());
 
     private final MatchRepository repository;
-    private final AtomicLong idSequence = new AtomicLong();
-    private final AtomicLong startOrderSequence = new AtomicLong();
+    private final AtomicLong matchSequence = new AtomicLong();
 
     public Scoreboard() {
         this(new InMemoryMatchRepository());
@@ -28,11 +27,12 @@ public final class Scoreboard {
 
     /** Starts an active match at 0:0 and version 0. */
     public MatchSnapshot startMatch(String homeTeam, String awayTeam) {
+        long sequence = next(matchSequence);
         Match match = Match.start(
-                new MatchId(next(idSequence)),
-                new TeamName(homeTeam),
-                new TeamName(awayTeam),
-                next(startOrderSequence));
+                new MatchId(sequence),
+                homeTeam,
+                awayTeam,
+                sequence);
         repository.add(match);
         return match.snapshot();
     }
@@ -47,9 +47,10 @@ public final class Scoreboard {
             int awayScore,
             long expectedVersion) {
         Score newScore = new Score(homeScore, awayScore);
-        return repository
-                .update(matchId, expectedVersion, match -> match.updateScore(newScore))
-                .snapshot();
+        Match current = repository.findById(matchId)
+                .orElseThrow(() -> new MatchNotFoundException(matchId));
+        Match updated = current.updateScore(newScore);
+        return repository.save(updated, expectedVersion).snapshot();
     }
 
     /** Finishes and removes an active match when its version is still current. */

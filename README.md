@@ -24,12 +24,20 @@ The build runs the JUnit test suite and creates:
 Scoreboard scoreboard = new Scoreboard();
 
 MatchSnapshot match = scoreboard.startMatch("Poland", "Germany");
-match = scoreboard.updateScore(match.id(), 2, 1, match.version());
+match =scoreboard.
+
+updateScore(match.id(), 2,1,match.
+
+version());
 
 List<MatchSnapshot> summary = scoreboard.getSummary();
 Optional<MatchSnapshot> latest = scoreboard.getMatch(match.id());
 
-scoreboard.finishMatch(match.id(), match.version());
+scoreboard.
+
+finishMatch(match.id(),match.
+
+version());
 ```
 
 `getSummary()` orders active matches by total score descending. Matches tied on total score are
@@ -47,7 +55,7 @@ workflow less direct. The operation is introduced in a dedicated git commit.
 
 `Scoreboard` is safe for concurrent method calls. Active aggregates live in a
 `ConcurrentHashMap`, and writes use its atomic, per-key `compute` operation. As a result, unrelated
-matches can be updated independently while competing writes to one match are serialized.
+matches can be updated independently while competing writes to one match can result in throwing exception.
 
 Every `Match` aggregate has a zero-based `version`. `updateScore` and `finishMatch` require the
 version observed by the caller. A successful score update creates a new immutable aggregate and
@@ -56,10 +64,7 @@ increments the version. If another writer has already changed it, the operation 
 prevents a delayed feed update from silently overwriting newer data.
 
 `getSummary()` copies the weakly consistent `ConcurrentHashMap` view into immutable snapshots and
-then sorts it. It is safe during concurrent writes and never exposes mutable state, but it is not a
-transactional point-in-time view across all matches. A global lock could provide that property at
-the cost of blocking otherwise independent match updates; the live scoreboard requirements do not
-justify that trade-off.
+then sorts it.
 
 ## Domain model and reasoning
 
@@ -67,6 +72,8 @@ justify that trade-off.
   through the `start` factory, and score changes are explicit state transitions.
 - `MatchId`, `TeamName`, and `Score` are small value objects. They keep validation close to the data
   whose validity they define.
+- The package is `@NullMarked` with JSpecify, so unannotated reference types are non-null by
+  default for compatible static-analysis tools and JVM-language consumers.
 - `MatchSnapshot` is the immutable public projection. Clients cannot construct or mutate internal
   aggregates.
 - `Scoreboard` is the application facade. `MatchRepository` separates use cases from the

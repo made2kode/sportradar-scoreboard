@@ -15,6 +15,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <jspecify.version>1.0.1</jspecify.version>
         <junit.version>5.12.2</junit.version>
         <maven.compiler.version>3.14.1</maven.compiler.version>
         <maven.surefire.version>3.5.5</maven.surefire.version>
@@ -23,6 +24,11 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -40,7 +46,7 @@
                 <configuration>
                     <parameters>true</parameters>
                     <compilerArgs>
-                        <arg>-Xlint:all</arg>
+                        <arg>-Xlint:all,-serial</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

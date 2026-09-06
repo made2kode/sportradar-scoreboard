@@ -1,6 +1,7 @@
 package io.github.made2kode.sportradar.scoreboard;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,80 +15,86 @@ import org.junit.jupiter.api.Test;
 
 class ScoreboardTest {
 
-    @Test
-    void startsMultipleMatchesAtZero() {
-        Scoreboard scoreboard = new Scoreboard();
+    private final Scoreboard scoreboard = new Scoreboard();
 
+    @Test
+    void starts_multiple_matches_at_zero() {
         MatchSnapshot first = scoreboard.startMatch("Mexico", "Canada");
         MatchSnapshot second = scoreboard.startMatch("Spain", "Brazil");
 
-        assertEquals(new MatchId(1), first.id());
-        assertEquals(new MatchId(2), second.id());
-        assertEquals(0, first.homeScore());
-        assertEquals(0, first.awayScore());
-        assertEquals(0, first.version());
-        assertEquals(2, scoreboard.getSummary().size());
+        assertAll(
+                () -> assertEquals(new MatchId(1), first.id()),
+                () -> assertEquals(new MatchId(2), second.id()),
+                () -> assertEquals(0, first.homeScore()),
+                () -> assertEquals(0, first.awayScore()),
+                () -> assertEquals(0, first.version()),
+                () -> assertEquals(2, scoreboard.getSummary().size()));
     }
 
     @Test
-    void updatesScoreAndIncrementsVersion() {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void updates_score_and_increments_version() {
+        MatchSnapshot started = start_match();
 
         MatchSnapshot updated = scoreboard.updateScore(started.id(), 2, 1, started.version());
 
-        assertEquals(2, updated.homeScore());
-        assertEquals(1, updated.awayScore());
-        assertEquals(1, updated.version());
+        assertAll(
+                () -> assertEquals(2, updated.homeScore()),
+                () -> assertEquals(1, updated.awayScore()),
+                () -> assertEquals(1, updated.version()));
     }
 
     @Test
-    void acceptsScoreCorrections() {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void accepts_score_corrections() {
+        MatchSnapshot started = start_match();
         MatchSnapshot scored = scoreboard.updateScore(started.id(), 2, 1, started.version());
 
         MatchSnapshot corrected = scoreboard.updateScore(scored.id(), 1, 1, scored.version());
 
-        assertEquals(1, corrected.homeScore());
-        assertEquals(1, corrected.awayScore());
-        assertEquals(2, corrected.version());
+        assertAll(
+                () -> assertEquals(1, corrected.homeScore()),
+                () -> assertEquals(1, corrected.awayScore()),
+                () -> assertEquals(2, corrected.version()));
     }
 
     @Test
-    void rejectsAStaleUpdateWithVersionDetails() {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void rejects_stale_update_with_version_details() {
+        MatchSnapshot started = start_match();
         scoreboard.updateScore(started.id(), 1, 0, started.version());
 
         OptimisticLockException exception = assertThrows(
                 OptimisticLockException.class,
                 () -> scoreboard.updateScore(started.id(), 2, 0, started.version()));
 
-        assertEquals(started.id(), exception.matchId());
-        assertEquals(0, exception.expectedVersion());
-        assertEquals(1, exception.actualVersion());
+        assertAll(
+                () -> assertEquals(started.id(), exception.matchId()),
+                () -> assertEquals(0, exception.expectedVersion()),
+                () -> assertEquals(1, exception.actualVersion()));
     }
 
     @Test
-    void onlyOneConcurrentWriterCanUseTheSameVersion() throws Exception {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void allows_only_one_concurrent_writer_for_same_version() throws Exception {
+        MatchSnapshot started = start_match();
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
 
         try {
             Future<Object> first = executor.submit(
-                    () -> updateAfter(start, scoreboard, started, 1, 0));
+                    () -> update_after(start, scoreboard, started, 1, 0));
             Future<Object> second = executor.submit(
-                    () -> updateAfter(start, scoreboard, started, 0, 1));
+                    () -> update_after(start, scoreboard, started, 0, 1));
 
             start.countDown();
             List<Object> results = List.of(first.get(5, SECONDS), second.get(5, SECONDS));
 
-            assertEquals(1, results.stream().filter(MatchSnapshot.class::isInstance).count());
-            assertEquals(1, results.stream().filter(OptimisticLockException.class::isInstance).count());
-            assertEquals(1, scoreboard.getSummary().getFirst().version());
+            assertAll(
+                    () -> assertEquals(
+                            1, results.stream().filter(MatchSnapshot.class::isInstance).count()),
+                    () -> assertEquals(
+                            1,
+                            results.stream()
+                                    .filter(OptimisticLockException.class::isInstance)
+                                    .count()),
+                    () -> assertEquals(1, scoreboard.getSummary().getFirst().version()));
         } finally {
             executor.shutdownNow();
             assertTrue(executor.awaitTermination(5, SECONDS));
@@ -95,9 +102,8 @@ class ScoreboardTest {
     }
 
     @Test
-    void finishesAnActiveMatch() {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void finishes_active_match() {
+        MatchSnapshot started = start_match();
 
         scoreboard.finishMatch(started.id(), started.version());
 
@@ -108,9 +114,8 @@ class ScoreboardTest {
     }
 
     @Test
-    void rejectsFinishingAStaleVersion() {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void rejects_finishing_stale_version() {
+        MatchSnapshot started = start_match();
         MatchSnapshot updated = scoreboard.updateScore(started.id(), 1, 0, started.version());
 
         assertThrows(
@@ -122,8 +127,7 @@ class ScoreboardTest {
     }
 
     @Test
-    void reproducesTheRequiredSummaryOrdering() {
-        Scoreboard scoreboard = new Scoreboard();
+    void reproduces_required_summary_ordering() {
         MatchSnapshot mexico = scoreboard.startMatch("Mexico", "Canada");
         MatchSnapshot spain = scoreboard.startMatch("Spain", "Brazil");
         MatchSnapshot germany = scoreboard.startMatch("Germany", "France");
@@ -142,9 +146,8 @@ class ScoreboardTest {
     }
 
     @Test
-    void summaryCannotBeModifiedByTheCaller() {
-        Scoreboard scoreboard = new Scoreboard();
-        scoreboard.startMatch("Poland", "Germany");
+    void summary_cannot_be_modified_by_caller() {
+        start_match();
 
         List<MatchSnapshot> summary = scoreboard.getSummary();
 
@@ -152,9 +155,8 @@ class ScoreboardTest {
     }
 
     @Test
-    void getsTheLatestStateOfOneActiveMatch() {
-        Scoreboard scoreboard = new Scoreboard();
-        MatchSnapshot started = scoreboard.startMatch("Poland", "Germany");
+    void gets_latest_state_of_active_match() {
+        MatchSnapshot started = start_match();
         MatchSnapshot updated = scoreboard.updateScore(started.id(), 2, 1, started.version());
 
         assertEquals(updated, scoreboard.getMatch(started.id()).orElseThrow());
@@ -164,24 +166,40 @@ class ScoreboardTest {
     }
 
     @Test
-    void rejectsInvalidInput() {
-        Scoreboard scoreboard = new Scoreboard();
-
+    void rejects_null_home_team() {
         assertThrows(NullPointerException.class, () -> scoreboard.startMatch(null, "Germany"));
+    }
+
+    @Test
+    void rejects_blank_home_team() {
         assertThrows(IllegalArgumentException.class, () -> scoreboard.startMatch(" ", "Germany"));
+    }
+
+    @Test
+    void rejects_match_against_same_team() {
         assertThrows(IllegalArgumentException.class, () -> scoreboard.startMatch("Poland", "Poland"));
-        MatchSnapshot match = scoreboard.startMatch("Poland", "Germany");
+    }
+
+    @Test
+    void rejects_negative_score() {
+        MatchSnapshot match = start_match();
+
         assertThrows(
                 IllegalArgumentException.class,
                 () -> scoreboard.updateScore(match.id(), -1, 0, match.version()));
+    }
+
+    @Test
+    void rejects_negative_expected_version() {
+        MatchSnapshot match = start_match();
+
         assertThrows(
                 IllegalArgumentException.class,
                 () -> scoreboard.updateScore(match.id(), 1, 0, -1));
     }
 
     @Test
-    void reportsUnknownMatches() {
-        Scoreboard scoreboard = new Scoreboard();
+    void reports_unknown_matches() {
         MatchId unknown = new MatchId(404);
 
         assertThrows(MatchNotFoundException.class, () -> scoreboard.finishMatch(unknown, 0));
@@ -190,7 +208,11 @@ class ScoreboardTest {
                 () -> scoreboard.updateScore(unknown, 1, 0, 0));
     }
 
-    private static Object updateAfter(
+    private MatchSnapshot start_match() {
+        return scoreboard.startMatch("Poland", "Germany");
+    }
+
+    private static Object update_after(
             CountDownLatch start,
             Scoreboard scoreboard,
             MatchSnapshot match,

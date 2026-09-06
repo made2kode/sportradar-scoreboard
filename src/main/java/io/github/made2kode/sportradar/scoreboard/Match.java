@@ -22,21 +22,17 @@ final class Match {
         this.homeTeam = Objects.requireNonNull(homeTeam, "homeTeam");
         this.awayTeam = Objects.requireNonNull(awayTeam, "awayTeam");
         this.score = Objects.requireNonNull(score, "score");
-        if (startOrder <= 0) {
-            throw new IllegalArgumentException("Start order must be positive");
-        }
-        if (version < 0) {
-            throw new IllegalArgumentException("Version cannot be negative");
-        }
         this.startOrder = startOrder;
         this.version = version;
     }
 
-    static Match start(MatchId id, TeamName homeTeam, TeamName awayTeam, long startOrder) {
-        if (homeTeam.equals(awayTeam)) {
+    static Match start(MatchId id, String homeTeam, String awayTeam, long startOrder) {
+        TeamName home = new TeamName(homeTeam);
+        TeamName away = new TeamName(awayTeam);
+        if (home.equals(away)) {
             throw new IllegalArgumentException("A team cannot play against itself");
         }
-        return new Match(id, homeTeam, awayTeam, Score.ZERO, startOrder, 0);
+        return new Match(id, home, away, Score.ZERO, startOrder, 0);
     }
 
     Match updateScore(Score newScore) {
