@@ -24,20 +24,12 @@ The build runs the JUnit test suite and creates:
 Scoreboard scoreboard = new Scoreboard();
 
 MatchSnapshot match = scoreboard.startMatch("Poland", "Germany");
-match =scoreboard.
-
-updateScore(match.id(), 2,1,match.
-
-version());
+match = scoreboard.updateScore(match.id(), 2 , 1, match.version());
 
 List<MatchSnapshot> summary = scoreboard.getSummary();
 Optional<MatchSnapshot> latest = scoreboard.getMatch(match.id());
 
-scoreboard.
-
-finishMatch(match.id(),match.
-
-version());
+scoreboard.finishMatch(match.id(), match.version());
 ```
 
 `getSummary()` orders active matches by total score descending. Matches tied on total score are
